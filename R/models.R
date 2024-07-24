@@ -217,6 +217,27 @@ predict.ensemble <- function(object, newdata, ...){
     )
 }
 
+
+# number of folds
+nfolds <- ifelse(sum(training$occ) < 10, 2, 5)
+
+tmp <- Sys.time()
+set.seed(32639)
+# tune maxent parameters
+param_optim <- maxent_param(data = training, 
+                            k = nfolds,
+                            filepath = "output/maxent_files")
+# fit a maxent model with the tuned parameters
+maxmod <- dismo::maxent(x = training[, covars],
+                        p = training$occ,
+                        removeDuplicates = FALSE,
+                        path = "output/maxent_files",
+                        args = param_optim)
+Sys.time() - tmp
+
+
+
+
 # function for simultaneous tuning of maxent regularization multiplier and features
 maxent_param <- function(data, y = "occ", k = 5, folds = NULL, filepath){
     require(dismo)
