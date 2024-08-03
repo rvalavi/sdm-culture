@@ -14,46 +14,48 @@ library(terra)
 ## Indian leopard cat
 ## Prionailurus bengalensis
 ## Distinct from Prionailurus javanensis since 2017. Remove any of these
+sf_bbox <- function(x) {
+  return(
+    terra::ext(x) %>%
+      as.polygons() %>% 
+      sf::st_as_sf()
+  )
+}
+
+
+cat_ext <- c(50, 150, -10, 50)
 
 cat_data <- occ(query = "Prionailurus bengalensis",
                 from = "gbif",
                 limit = 10000,
-                geometry = terra::ext(c(50, 150, -10, 50)) %>%
-                  as.polygons() %>% 
-                  sf::st_as_sf())
+                geometry = sf_bbox(cat_ext))
 
 cat_background <- occ(query = "Felis",
                       from = "gbif",
                       limit = 50000,
-                      geometry = terra::ext(c(50, 150, -10, 50)) %>%
-                        as.polygons() %>% 
-                        sf::st_as_sf())
+                      geometry = sf_bbox(cat_ext))
 
 ## Sinkhole Cycad
 ## Zamia prasina
 ## Previously used incorrectly for Z. decumbens. Remove any of these
 ## Synonym: Z. polymorpha
 
+plant_ext <- c(-100, -80, 12, 24)
+
 plant_data <- occ(query = "Zamia prasina",
                   from = "gbif",
                   limit = 10000,
-                  geometry = terra::ext(c(-100, -80, 12, 24)) %>%
-                    as.polygons() %>% 
-                    sf::st_as_sf())
+                  geometry = sf_bbox(plant_ext))
 
 plant_data2 <- occ(query = "Zamia polymorpha",
                    from = "gbif",
                    limit = 10000,
-                   geometry = terra::ext(c(-100, -80, 12, 24)) %>%
-                     as.polygons() %>% 
-                     sf::st_as_sf())
+                   geometry = sf_bbox(plant_ext))
 
 plant_background <- occ(query = "Cycadales",
                         from = "gbif",
                         limit = 50000,
-                        geometry = terra::ext(c(-100, -80, 12, 24)) %>%
-                          as.polygons() %>% 
-                          sf::st_as_sf())
+                        geometry = sf_bbox(plant_ext))
 
 ##################
 ### Clean Data ###
