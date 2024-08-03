@@ -13,7 +13,7 @@ pkg <- c(
 )
 
 pkgna <- names(which(sapply(sapply(pkg, find.package, quiet = TRUE), length) == 0))
-if(length(pkgna)){
+if (length(pkgna)) {
     nm <- paste(pkgna, collapse = ", ")
     message("Installing packages: ", nm, "...")
     utils::install.packages(pkgna)
@@ -33,26 +33,18 @@ suppressPackageStartupMessages({
 })
 
 
-#' Fitting several models as an ensemble
-#'
-#' A function to ... 
-#' The response if Gaussin here..
-#' Models include: GAM, Lasso, RF and BRT (a.k.a. GBM)
-#'
-#' @param x data.frame of the training data.
-#' @param y character, the column name of the response
-#'
-#' @author Roozbeh Valavi
-#'
-#' @return an object of ensemble containing individual model objects for prediction
-#' @export
-#'
-#' @examples
+# Fitting several models as an ensemble
+#
+# A function to ... 
+# Models include: GAM, Lasso, RF and BRT (a.k.a. GBM), and Maxent
+#
+# x data.frame of the training data.
+# y character, the column name of the response
 ensemble <- function(
         x,
         y = "",
         fold_ids = NULL,
-        models = c("GLM", "GAM", "GBM", "RF")
+        models = c("GLM", "GAM", "GBM", "RF", "Maxent")
 ) {
     
     # get covariate names
@@ -60,55 +52,54 @@ ensemble <- function(
     covars <- covars[covars != y]
     
     if(is.null(fold_ids)){
-        fold_ids <- dismo::kfold(x, k = 5)
+        fold_ids <- dismo::kfold(x[, y], k = 5)
     }
     
     # if null use all
-    if (is.null(models)) models <- c("GLM", "GAM", "GBM", "RF")
-    if (tolower(models[1]) == "all") models <- c("GLM", "GAM", "GBM", "RF")
+    if (is.null(models)) models <- c("GLM", "GAM", "GBM", "RF", "Maxent")
+    if (tolower(models[1]) == "all") models <- c("GLM", "GAM", "GBM", "RF", "Maxent")
     # set the default to null
-    ls_mod <- gm_mod <- br_mod <- rf_mod <- NULL
+    ls_mod <- gm_mod <- br_mod <- rf_mod <- mx_mod <- NULL
     
     # compute weights
-    prNum <- as.numeric(table(x[, y, drop=TRUE])["1"]) # number of presences
-    bgNum <- as.numeric(table(x[, y, drop=TRUE])["0"]) # number of backgrounds
-    wt <- ifelse(x[, y, drop = TRUE] == 1, 1, prNum / bgNum)
+    num_pr <- as.numeric(table(x[, y, drop=TRUE])["1"]) # number of presences
+    num_bg <- as.numeric(table(x[, y, drop=TRUE])["0"]) # number of backgrounds
+    case_weights <- ifelse(x[, y, drop = TRUE] == 1, 1, num_pr / num_bg)
     
     if ("GAM" %in% models) {
         require(mgcv)
         message("Fitting GAM...")
         # fit generalised additive model (GAM))
-        gm_form <- paste(
-            y,
-            paste0("s(", covars, ")", collapse = " + "),
-            sep = " ~ "
+        # generating GAM formula
+        gm_form <- reformulate(
+            termlabels = paste0("s(", covars, ")"), 
+            response = y
         )
         
         gm_mod <- mgcv::gam(
             formula = as.formula(gm_form),
             data = x,
             family = binomial(link = "logit"),
-            weights = wt,
+            weights = case_weights,
             method = "REML",
             select = TRUE
         )
     }
     
     if ("RF" %in% models) {
-        message("Fitting RF...")
-        
-        warning("Fitting RF needs to consider down-sampling!")
-        
-        # fit random forest with ranger
+        message("Fitting RF with down-sampling...")
+        # fit random forest down-sampled with ranger
         rf_mod <- random_forest(
             data = x,
             y = y,
-            max.depth = c(0, 5, 10),
-            splitrule = c("gini", "hellinger", "extratrees"),
-            num.trees = c(1000),
-            mtry = 2:4,
+            splitrule = c("gini", "hellinger"),
+            num.trees = 1000, # enough trees to learn with balanced trees
+            mtry = 2:(min(5, length(covars))),
+            max.depth = NULL, # allow full depth for down-sampling
             foldid = fold_ids,
-            threads = NULL,
+            sample.fraction = num_pr / num_bg, # for down-sampling
+            case.weights = case_weights, # for down-sampling
+            threads = NULL, # full treads
             plot = TRUE
         )
     }
@@ -121,12 +112,12 @@ ensemble <- function(
             gbm.y = which(names(x) == y),
             gbm.x = which(names(x) != y),
             family = "bernoulli",
-            tree.complexity = ifelse(prNum < 50, 1, 5),
+            tree.complexity = ifelse(num_pr < 50, 1, 5),
             learning.rate = 0.001,
             bag.fraction = 0.75,
             max.trees = 10000,
             n.trees = 50,
-            site.weights = wt,
+            site.weights = case_weights,
             fold.vector = fold_ids,
             n.folds = length(unique(fold_ids)),
             silent = TRUE
@@ -145,11 +136,30 @@ ensemble <- function(
             x = training_sparse,
             y = training_quad[, y],
             family = "binomial",
-            alpha = 1, # fitting lasso
-            weights = wt,
+            alpha = 1,
+            weights = case_weights,
             foldid = fold_ids
         )
         plot(ls_mod)
+    }
+    
+    if ("Maxent" %in% models) {
+        message("Fitting Maxent...")
+        # tune maxent parameters
+        param_optim <- maxent_param(
+            data = x,
+            y = y,
+            folds = fold_ids,
+        )
+        # fit a maxent model with the tuned parameters
+        mx_mod <- dismo::maxent(
+            x = x[, covars],
+            p = x[, y, drop = TRUE],
+            removeDuplicates = FALSE,
+            path = tempdir(),
+            args = param_optim
+        )
+        
     }
     
     out <- list(
@@ -157,6 +167,7 @@ ensemble <- function(
         "GAM" = gm_mod,
         "GBM" = br_mod,
         "RF" = rf_mod,
+        "Maxent" = mx_mod,
         "quad" = quad_obj
     )
     class(out) <- c("ensemble", "list")
@@ -180,7 +191,7 @@ predict.ensemble <- function(object, newdata, ...){
     require(mgcv)
     require(glmnet)
     
-    pred_ls <- pred_gm <- pred_rf <- pred_br <- NA
+    pred_ls <- pred_gm <- pred_rf <- pred_br <- pred_mx <- NA
     
     # predict lasso with the 1 sd lambda
     if (!is.null(object[["GLM-Lasso"]])) {
@@ -196,7 +207,7 @@ predict.ensemble <- function(object, newdata, ...){
     
     # predict rf with ranger
     if (!is.null(object[["RF"]])) {
-        pred_rf <- predict(object[["RF"]], newdata)$predictions
+        pred_rf <- predict(object[["RF"]], newdata)$predictions[,"1"]
     }
     
     # predict brt with the best tree number
@@ -205,11 +216,18 @@ predict.ensemble <- function(object, newdata, ...){
         pred_br <- predict(brt, newdata, n.trees = brt$gbm.call$best.trees)
     }
     
+    # predict brt with the best tree number
+    mxt <- object[["Maxent"]]
+    if (!is.null(brt)) {
+        pred_mx <- predict(mxt, newdata, type = "cloglog")
+    }
+    
     out <- data.frame(
         l = pred_ls[, 1],
         g = pred_gm,
         r = pred_rf,
-        b = pred_br
+        b = pred_br,
+        x = pred_mx
     )
     
     return(
@@ -218,37 +236,18 @@ predict.ensemble <- function(object, newdata, ...){
 }
 
 
-# number of folds
-nfolds <- ifelse(sum(training$occ) < 10, 2, 5)
-
-tmp <- Sys.time()
-set.seed(32639)
-# tune maxent parameters
-param_optim <- maxent_param(data = training, 
-                            k = nfolds,
-                            filepath = "output/maxent_files")
-# fit a maxent model with the tuned parameters
-maxmod <- dismo::maxent(x = training[, covars],
-                        p = training$occ,
-                        removeDuplicates = FALSE,
-                        path = "output/maxent_files",
-                        args = param_optim)
-Sys.time() - tmp
-
-
-
-
 # function for simultaneous tuning of maxent regularization multiplier and features
-maxent_param <- function(data, y = "occ", k = 5, folds = NULL, filepath){
+maxent_param <- function(data, y = "occ", folds = NULL, k = 5, filepath = tempdir()){
     require(dismo)
     require(caret)
     require(precrec)
+    
     if(is.null(folds)){
         # generate balanced CV folds
         folds <- caret::createFolds(y = as.factor(data$occ), k = k)
     }
-    names(data)[which(names(data) == y)] <- "occ"
     covars <- names(data)[which(names(data) != y)]
+    names(data)[which(names(data) == y)] <- "occ"
     # regularization multipliers
     ms <- c(0.5, 1, 2, 3, 4)
     grid <- expand.grid(
@@ -277,14 +276,16 @@ maxent_param <- function(data, y = "occ", k = 5, folds = NULL, filepath){
             ), "try-error")){
                 next
             }
-            modpred <- predict(maxmod, data[testSet, covars], args = "outputformat=cloglog")
-            pred_df <- data.frame(score = modpred, label = data$occ[testSet])
+            mod_pred <- predict(maxmod, data[testSet, covars], args = "outputformat=cloglog")
+            pred_df <- data.frame(score = mod_pred, label = data$occ[testSet])
             full_pred <- rbind(full_pred, pred_df)
         }
-        AUCs[n] <- precrec::auc(precrec::evalmod(scores = full_pred$score, 
-                                                 labels = full_pred$label))[1,4]
+        AUCs[n] <- precrec::auc(
+            precrec::evalmod(scores = full_pred$score, labels = full_pred$label)
+        )[1,4]
     }
     best_param <- as.character(unlist(grid[which.max(AUCs), ]))
+    
     return(best_param)
 }
 
@@ -292,11 +293,13 @@ maxent_param <- function(data, y = "occ", k = 5, folds = NULL, filepath){
 # tune parameters in ranger mode
 random_forest <- function(data, 
                           y = "occ", 
-                          max.depth = c(0, 5, 10, 15),
-                          splitrule = c("gini", "hellinger"),
-                          num.trees = 1000,
+                          splitrule = c("gini", "hellinger", "extratrees"),
+                          num.trees = 500,
                           mtry = NULL,
+                          max.depth = NULL,
                           foldid = NULL,
+                          sample.fraction = 0.632,
+                          case.weights = NULL,
                           threads = NULL,
                           plot = TRUE){
     
@@ -337,6 +340,9 @@ random_forest <- function(data,
                 splitrule = grid$splitrule[i],
                 max.depth = grid$max.depth[i],
                 mtry = grid$mtry[i],
+                probability = TRUE,
+                sample.fraction = sample.fraction,
+                case.weights = case.weights,
                 num.threads = threads,
                 replace = TRUE
             )
@@ -362,18 +368,21 @@ random_forest <- function(data,
     }
     print(evalmodel[bestparam, ])
     
-    finalmod <- ranger::ranger(
+    final_model <- ranger::ranger(
         formula = form,
         data = data, 
         num.trees = evalmodel$ntrees[bestparam],
         mtry = evalmodel$mtry[bestparam],
         splitrule = evalmodel$split[bestparam],
         max.depth = evalmodel$depth[bestparam],
+        probability = TRUE,
+        sample.fraction = sample.fraction,
+        case.weights = case.weights,
         num.threads = threads,
         replace = TRUE
     )
     
-    return(finalmod)
+    return(final_model)
 }
 
 # plot tuning parameters of ranger
@@ -394,20 +403,6 @@ plot_tune_param <- function(x){
     )
 }
 
-
-# function to remove the training cells and their direct neighbours
-cell_neighbour <- function(r, cell, size = 3){
-    h <- (size - 1) / 2
-    dif <- rep(seq(-h, h), each = size)
-    rowcols <- rowColFromCell(r, cell = cell)
-    newr <- matrix(dif, nrow = size, byrow = TRUE) + rowcols[1]
-    newc <- matrix(dif, nrow = size, byrow = FALSE) + rowcols[2]
-    outCells <- cellFromRowCol(r, row = as.vector(newr), col = as.vector(newc))
-    
-    return(
-        outCells[!is.na(outCells)]
-    )
-}
 
 
 # Orthogonal quadratic polynomials for glmnet

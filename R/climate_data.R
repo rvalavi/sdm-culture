@@ -1,6 +1,10 @@
 library(magrittr)
 library(terra)
 
+terra::ext(c(50, 150, -10, 50)) %>% 
+  as.polygons() %>% 
+  sf::st_as_sf()
+
 
 months <- 1:12
 years <- 2003:2017
