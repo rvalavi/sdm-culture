@@ -32,7 +32,8 @@ url_base <- "https://os.zhdk.cloud.switch.ch/envicloud/chelsa/chelsa_V2/GLOBAL/c
 for (tp in periods) {
     for (vr in vars) {
         # get the full url for download
-        url_full <- sprintf("%s/CHELSA_%s_%s_V.2.1.tif", url_base, vr, tp)
+        url_period <- sprintf(url_base, tp)
+        url_full <- sprintf("%s/CHELSA_%s_%s_V.2.1.tif", url_period, vr, clean_name(tp))
         # NOTE: for download just use the parent dir; then delete original
         dwn_name <- sprintf("%s/%s.tif", dir_base, vr)
         
