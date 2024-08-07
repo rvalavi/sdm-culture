@@ -9,8 +9,10 @@ periods <- c("1981-2010", "2041-2070/GFDL-ESM4/ssp585")
 # variable of interest
 vars <- c(
     paste0("bio", 1:19),
-    "gdd10",
-    
+    "gdd5",
+    "pet_penman_mean",
+    "pet_penman_range",
+    "npp"
 )
 
 clean_name <- function(x) {
@@ -25,7 +27,7 @@ clean_name("2041-2070/GFDL-ESM4/ssp585")
 "CHELSA_bio11_1981-2010_V.2.1.tif"
 "CHELSA_bio11_2041-2070_gfdl-esm4_ssp585_V.2.1.tif" 
 
-out_path <- "data/CHELSA_data"
+dir_base <- "data/CHELSA_data"
 url_base <- "https://os.zhdk.cloud.switch.ch/envicloud/chelsa/chelsa_V2/GLOBAL/climatologies/%s/bio"
 
 
@@ -35,7 +37,7 @@ for (tp in periods) {
         # get the full url for download
         url_full <- sprintf("%s/CHELSA_%s_%s_V.2.1.tif", url_base, vr, tp)
         # NOTE: for download just use the parent dir; then delete original
-        dwn_name <- sprintf("%s/%s.tif", out_path, vr)
+        dwn_name <- sprintf("%s/%s.tif", dir_base, vr)
         
         tryCatch(
             {
@@ -48,9 +50,9 @@ for (tp in periods) {
         )
         
         # output dir base on the input period
-        out_dir <- file.path(out_path, clean_name(tp))
-        if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-        out_name <- file.path(out_dir, vr)
+        out_dir <- file.path(dir_base, clean_name(tp))
+        if (!dir.exists(out_dir)) 
+            dir.create(out_dir, recursive = TRUE)
         
         # read and mask the data
         terra::crop(
@@ -58,7 +60,6 @@ for (tp in periods) {
             y = cat_ext,
             filename = sprintf("%s/%s_%s.tif", out_dir, vr, "cat")
         )
-        
         terra::crop(
             x = terra::rast(dwn_name), 
             y = plant_ext,
@@ -66,7 +67,7 @@ for (tp in periods) {
         )
         
         # remove the main file
-        unlink(out_name)
-        print(out_name)
+        unlink(dwn_name)
+        print(dwn_name)
     }
 }
