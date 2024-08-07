@@ -5,7 +5,11 @@ cat_ext <- terra::ext(c(65, 145, -10, 50))
 plant_ext <- terra::ext(c(-100, -80, 12, 24)) 
 
 # periods to download
-periods <- c("1981-2010", "2041-2070/GFDL-ESM4/ssp585")
+periods <- c(
+    "1981-2010",
+    "2041-2070/GFDL-ESM4/ssp585",
+    "2071-2100/GFDL-ESM4/ssp585"
+)
 # variable of interest
 vars <- c(
     paste0("bio", 1:19),
@@ -21,19 +25,12 @@ clean_name <- function(x) {
     )
 }
 
-clean_name("1981-2010")
-clean_name("2041-2070/GFDL-ESM4/ssp585")
-
-"CHELSA_bio11_1981-2010_V.2.1.tif"
-"CHELSA_bio11_2041-2070_gfdl-esm4_ssp585_V.2.1.tif" 
 
 dir_base <- "data/CHELSA_data"
 url_base <- "https://os.zhdk.cloud.switch.ch/envicloud/chelsa/chelsa_V2/GLOBAL/climatologies/%s/bio"
 
-
 for (tp in periods) {
     for (vr in vars) {
-        
         # get the full url for download
         url_full <- sprintf("%s/CHELSA_%s_%s_V.2.1.tif", url_base, vr, tp)
         # NOTE: for download just use the parent dir; then delete original
@@ -71,3 +68,4 @@ for (tp in periods) {
         print(dwn_name)
     }
 }
+
