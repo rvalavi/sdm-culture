@@ -347,16 +347,16 @@ random_forest <- function(data,
                 replace = TRUE
             )
             
-            pred <- predict(mod, data[test_set, ])$predictions
-            
-            modrsq[k] <- cor(pred, data[test_set, y, drop = TRUE])^2
+            pred <- predict(mod, data[testSet, ], type = "response")$predictions[,"1"]
+            modauc[k] <- precrec::auc(
+                precrec::evalmod(scores = pred, labels = data[testSet, y, drop=TRUE])
+            )[1,4]
         }
         evalmodel$depth[i] <- grid$max.depth[i]
         evalmodel$split[i] <- grid$splitrule[i]
         evalmodel$ntrees[i] <- grid$num.trees[i]
         evalmodel$mtry[i] <- grid$mtry[i]
-        evalmodel$eval[i] <- mean(modrsq)
-        # evalmodel$aucse[i] <- sd(modrsq) / sqrt(nfold)
+        evalmodel$eval[i] <- mean(modauc)
     }
     
     bestparam <- which.max(evalmodel$eval)
