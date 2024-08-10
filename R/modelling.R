@@ -5,10 +5,10 @@ library(terra)
 source("R/models.R")
 
 # get climate data --------------------------------------------------------
-cover_rast <- terra::rast(
+covar_rast <- terra::rast(
   list.files("data/CHELSA_data/1981-2010/", pattern = "_cat.tif$", full.names = TRUE)
 )
-plot(cover_rast[[1:4]])
+plot(covar_rast[[1:4]])
 
 
 # spatial cv --------------------------------------------------------------
