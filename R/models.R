@@ -33,10 +33,10 @@ suppressPackageStartupMessages({
 })
 
 
-# Fitting several models as an ensemble
+# Fitting several models as an ensemble SDM
 #
 # A function to ... 
-# Models include: GAM, Lasso, RF and BRT (a.k.a. GBM), and Maxent
+# Models include: GAM, Lasso-GLM, RF, BRT (a.k.a. GBM), and Maxent
 #
 # x data.frame of the training data.
 # y character, the column name of the response
@@ -52,12 +52,14 @@ ensemble <- function(
     covars <- covars[covars != y]
     
     if(is.null(fold_ids)){
-        fold_ids <- dismo::kfold(x[, y], k = 5)
+        fold_ids <- dismo::kfold(x[, y, drop = TRUE], k = 5)
     }
     
     # if null use all
+    models <- tolower(models)
     if (is.null(models)) models <- c("GLM", "GAM", "GBM", "RF", "Maxent")
-    if (tolower(models[1]) == "all") models <- c("GLM", "GAM", "GBM", "RF", "Maxent")
+    if (models[1] == "all") models <- c("GLM", "GAM", "GBM", "RF", "Maxent")
+    
     # set the default to null
     ls_mod <- gm_mod <- br_mod <- rf_mod <- mx_mod <- NULL
     
@@ -66,7 +68,7 @@ ensemble <- function(
     num_bg <- as.numeric(table(x[, y, drop=TRUE])["0"]) # number of backgrounds
     case_weights <- ifelse(x[, y, drop = TRUE] == 1, 1, num_pr / num_bg)
     
-    if ("GAM" %in% models) {
+    if ("gam" %in% models) {
         require(mgcv)
         message("Fitting GAM...")
         # fit generalised additive model (GAM))
@@ -86,7 +88,15 @@ ensemble <- function(
         )
     }
     
-    if ("RF" %in% models) {
+    # for RF mtry
+    sqrt_vars <- floor(
+        sqrt(
+            length(covars)
+        )
+    )
+    
+    # NOTE: this RF is for binary classification with down-sampling
+    if ("rf" %in% models) {
         message("Fitting RF with down-sampling...")
         # fit random forest down-sampled with ranger
         rf_mod <- random_forest(
@@ -94,7 +104,7 @@ ensemble <- function(
             y = y,
             splitrule = c("gini", "hellinger"),
             num.trees = 1000, # enough trees to learn with balanced trees
-            mtry = 2:(min(5, length(covars))),
+            mtry = 2:(min(length(covars), max(5, sqrt_vars))),
             max.depth = NULL, # allow full depth for down-sampling
             foldid = fold_ids,
             sample.fraction = num_pr / num_bg, # for down-sampling
@@ -104,7 +114,7 @@ ensemble <- function(
         )
     }
     
-    if ("GBM" %in% models) {
+    if ("gbm" %in% models) {
         message("Fitting GBM...")
         # fit boosted regression tress (BRT) a.k.a GBM
         br_mod <- dismo::gbm.step(
@@ -124,7 +134,7 @@ ensemble <- function(
         )
     }
     
-    if ("GLM" %in% models) {
+    if ("glm" %in% models) {
         message("Fitting GLM-Lasso...")
         # fit regularized regression with L1
         quad_obj <- make_quadratic(x, cols = covars)
@@ -143,7 +153,7 @@ ensemble <- function(
         plot(ls_mod)
     }
     
-    if ("Maxent" %in% models) {
+    if ("maxent" %in% models) {
         message("Fitting Maxent...")
         # tune maxent parameters
         param_optim <- maxent_param(
@@ -151,6 +161,8 @@ ensemble <- function(
             y = y,
             folds = fold_ids,
         )
+        print(param_optim)
+        
         # fit a maxent model with the tuned parameters
         mx_mod <- dismo::maxent(
             x = x[, covars],
@@ -196,24 +208,24 @@ predict.ensemble <- function(object, newdata, ...){
     # predict lasso with the 1 sd lambda
     if (!is.null(object[["GLM-Lasso"]])) {
         pred_quad <- predict(object[["quad"]], newdata = newdata)
-        pred_sparse <- sparse.model.matrix( ~., pred_quad)
-        pred_ls <- predict(object[["GLM-Lasso"]], pred_sparse, s = "lambda.min")
+        pred_sparse <- sparse.model.matrix(~., pred_quad)
+        pred_ls <- predict(object[["GLM-Lasso"]], pred_sparse, s = "lambda.min", ...)
     }
     
     # predict gam model
     if (!is.null(object[["GAM"]])) {
-        pred_gm <- predict(object[["GAM"]], newdata)
+        pred_gm <- predict(object[["GAM"]], newdata, ...)
     }
     
     # predict rf with ranger
     if (!is.null(object[["RF"]])) {
-        pred_rf <- predict(object[["RF"]], newdata)$predictions[,"1"]
+        pred_rf <- predict(object[["RF"]], newdata, ...)$predictions[,"1"]
     }
     
     # predict brt with the best tree number
     brt <- object[["GBM"]]
     if (!is.null(brt)) {
-        pred_br <- predict(brt, newdata, n.trees = brt$gbm.call$best.trees)
+        pred_br <- predict(brt, newdata, n.trees = brt$gbm.call$best.trees, ...)
     }
     
     # predict brt with the best tree number
@@ -298,8 +310,10 @@ random_forest <- function(data,
                           mtry = NULL,
                           max.depth = NULL,
                           foldid = NULL,
+                          probability = TRUE,
                           sample.fraction = 0.632,
-                          case.weights = NULL,
+                          case.weights = NULL, 
+                          type = "response",
                           threads = NULL,
                           plot = TRUE){
     
@@ -340,14 +354,14 @@ random_forest <- function(data,
                 splitrule = grid$splitrule[i],
                 max.depth = grid$max.depth[i],
                 mtry = grid$mtry[i],
-                probability = TRUE,
+                probability = probability,
                 sample.fraction = sample.fraction,
                 case.weights = case.weights,
                 num.threads = threads,
                 replace = TRUE
             )
             
-            pred <- predict(mod, data[testSet, ], type = "response")$predictions[,"1"]
+            pred <- predict(mod, data[testSet, ], type = type)$predictions[,"1"]
             modauc[k] <- precrec::auc(
                 precrec::evalmod(scores = pred, labels = data[testSet, y, drop=TRUE])
             )[1,4]
@@ -375,7 +389,7 @@ random_forest <- function(data,
         mtry = evalmodel$mtry[bestparam],
         splitrule = evalmodel$split[bestparam],
         max.depth = evalmodel$depth[bestparam],
-        probability = TRUE,
+        probability = probability,
         sample.fraction = sample.fraction,
         case.weights = case.weights,
         num.threads = threads,

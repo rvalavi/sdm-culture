@@ -5,6 +5,10 @@ library(terra)
 source("R/models.R")
 
 # get climate data --------------------------------------------------------
+cover_rast <- terra::rast(
+  list.files("data/CHELSA_data/1981-2010/", pattern = "_cat.tif$", full.names = TRUE)
+)
+plot(cover_rast[[1:4]])
 
 
 # spatial cv --------------------------------------------------------------
@@ -52,11 +56,12 @@ Sys.time() - tm
 
 #
 # predicting rasters ------------------------------------------------------
-# predict to rasters; 1 hour runtime
+# predict to raster layers
 tm <- Sys.time()
 pred_current <- predict(
   object = rr,
   model = rcv_mod,
+  type = "response",
   cpkgs = c(
     "ranger",
     "dismo",
