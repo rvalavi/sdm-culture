@@ -12,11 +12,11 @@ periods <- c(
 )
 # variable of interest
 vars <- c(
-    paste0("bio", 1:19),
-    "gdd5",
-    "pet_penman_mean",
-    "pet_penman_range",
-    "npp"
+    paste0("bio", 1:19)
+    # "gdd5",
+    # "pet_penman_mean",
+    # "pet_penman_range",
+    # "npp"
 )
 
 clean_name <- function(x) {

@@ -56,12 +56,12 @@ ensemble <- function(
     }
     
     # if null use all
-    models <- tolower(models)
     if (is.null(models)) models <- c("GLM", "GAM", "GBM", "RF", "Maxent")
-    if (models[1] == "all") models <- c("GLM", "GAM", "GBM", "RF", "Maxent")
+    if (tolower(models)[1] == "all") models <- c("GLM", "GAM", "GBM", "RF", "Maxent")
+    models <- tolower(models)
     
     # set the default to null
-    ls_mod <- gm_mod <- br_mod <- rf_mod <- mx_mod <- NULL
+    ls_mod <- gm_mod <- br_mod <- rf_mod <- mx_mod <- quad_obj <- NULL
     
     # compute weights
     num_pr <- as.numeric(table(x[, y, drop=TRUE])["1"]) # number of presences
@@ -105,7 +105,7 @@ ensemble <- function(
             splitrule = c("gini", "hellinger"),
             num.trees = 1000, # enough trees to learn with balanced trees
             mtry = 2:(min(length(covars), max(5, sqrt_vars))),
-            max.depth = NULL, # allow full depth for down-sampling
+            # max.depth = NULL, # allow full depth for down-sampling
             foldid = fold_ids,
             sample.fraction = num_pr / num_bg, # for down-sampling
             case.weights = case_weights, # for down-sampling
@@ -230,7 +230,7 @@ predict.ensemble <- function(object, newdata, ...){
     
     # predict brt with the best tree number
     mxt <- object[["Maxent"]]
-    if (!is.null(brt)) {
+    if (!is.null(mxt)) {
         pred_mx <- predict(mxt, newdata, type = "cloglog")
     }
     
@@ -308,7 +308,7 @@ random_forest <- function(data,
                           splitrule = c("gini", "hellinger", "extratrees"),
                           num.trees = 500,
                           mtry = NULL,
-                          max.depth = NULL,
+                          # max.depth = NULL,
                           foldid = NULL,
                           probability = TRUE,
                           sample.fraction = 0.632,
@@ -323,15 +323,19 @@ random_forest <- function(data,
     form <- as.formula(
         paste(y, "~ .")
     )
+    if (probability) {
+        data[, y] <- as.factor(data[, y])
+    }
+    
     
     if(is.null(mtry)){
         mtry <- floor(sqrt(ncol(data) - 1))
     }
     
-    grid <- expand.grid(max.depth = max.depth, 
-                        splitrule = splitrule,
-                        num.trees = num.trees,
+    grid <- expand.grid(split = splitrule,
+                        ntrees = num.trees,
                         mtry = mtry,
+                        # depth = max.depth, 
                         stringsAsFactors = FALSE)
     
     if(is.null(foldid)){
@@ -339,9 +343,9 @@ random_forest <- function(data,
     }
     nfold <- sort(unique(foldid))
     
-    evalmodel <- data.frame(depth = rep(NA, nrow(grid)), split = NA)
+    evalmodel <- data.frame(split = rep(NA, nrow(grid)), ntrees = NA)
     for(i in seq_along(grid[,1])){
-        modrsq <- c()
+        modauc <- c()
         for(k in nfold){
             
             train_set <- which(foldid != k)
@@ -350,36 +354,36 @@ random_forest <- function(data,
             mod <- ranger::ranger(
                 formula = form,
                 data = data[train_set, ], 
-                num.trees = grid$num.trees[i],
-                splitrule = grid$splitrule[i],
-                max.depth = grid$max.depth[i],
+                num.trees = grid$ntrees[i],
+                splitrule = grid$split[i],
+                # max.depth = grid$depth[i],
                 mtry = grid$mtry[i],
                 probability = probability,
                 sample.fraction = sample.fraction,
-                case.weights = case.weights,
+                case.weights = case.weights[train_set],
                 num.threads = threads,
                 replace = TRUE
             )
             
-            pred <- predict(mod, data[testSet, ], type = type)$predictions[,"1"]
+            pred <- predict(mod, data[test_set, ], type = type)$predictions[, "1"]
             modauc[k] <- precrec::auc(
-                precrec::evalmod(scores = pred, labels = data[testSet, y, drop=TRUE])
+                precrec::evalmod(scores = pred, labels = data[test_set, y, drop=TRUE])
             )[1,4]
         }
-        evalmodel$depth[i] <- grid$max.depth[i]
-        evalmodel$split[i] <- grid$splitrule[i]
-        evalmodel$ntrees[i] <- grid$num.trees[i]
+        # evalmodel$depth[i] <- grid$max.depth[i]
+        evalmodel$split[i] <- grid$split[i]
+        evalmodel$ntrees[i] <- grid$ntrees[i]
         evalmodel$mtry[i] <- grid$mtry[i]
         evalmodel$eval[i] <- mean(modauc)
     }
     
     bestparam <- which.max(evalmodel$eval)
     
-    if(plot){
-        print(
-            plot_tune_param(evalmodel)
-        )
-    }
+    # if(plot){
+    #     print(
+    #         plot_tune_param(evalmodel)
+    #     )
+    # }
     print(evalmodel[bestparam, ])
     
     final_model <- ranger::ranger(
@@ -388,7 +392,7 @@ random_forest <- function(data,
         num.trees = evalmodel$ntrees[bestparam],
         mtry = evalmodel$mtry[bestparam],
         splitrule = evalmodel$split[bestparam],
-        max.depth = evalmodel$depth[bestparam],
+        # max.depth = evalmodel$depth[bestparam],
         probability = probability,
         sample.fraction = sample.fraction,
         case.weights = case.weights,

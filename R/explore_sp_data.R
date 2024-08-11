@@ -12,7 +12,7 @@ plot(cat_points$longitude, cat_points$latitude)
 plot(World$geometry, add = TRUE)
 cat_points %>% 
     filter(value == 1) %>% 
-    select(longitude, latitude) %>% 
+    dplyr::select(longitude, latitude) %>% 
     points(col = "red")
 abline(v = 65)
 abline(v = 145)
@@ -44,6 +44,6 @@ plot(
 plot(World$geometry, add = TRUE)
 plant_points %>% 
     filter(value == 1) %>% 
-    select(longitude, latitude) %>% 
+    dplyr::select(longitude, latitude) %>% 
     points(col = "red")
 
