@@ -7,13 +7,6 @@ library(spocc)
 library(rgbif)
 library(terra)
 
-###############################
-### Download Data From GBIF ###
-###############################
-
-## Indian leopard cat
-## Prionailurus bengalensis
-## Distinct from Prionailurus javanensis since 2017. Remove any of these
 sf_bbox <- function(x) {
   return(
     terra::ext(x) %>%
@@ -21,6 +14,14 @@ sf_bbox <- function(x) {
       sf::st_as_sf()
   )
 }
+
+###############################
+### Download Data From GBIF ###
+###############################
+
+## Indian leopard cat
+## Prionailurus bengalensis
+## Distinct from Prionailurus javanensis since 2017. Remove any of these
 
 
 cat_ext <- c(50, 150, -10, 50)
@@ -130,13 +131,11 @@ plant_bg <- plant_background$gbif$data[[1]] %>%
          year >= 1990,
          coordinateUncertaintyInMeters <= 5000 | is.na(coordinateUncertaintyInMeters))
   
-plot(plant_bg$latitude ~ plant_bg$longitude,
-     xlim = c(-100, -80),
-     ylim = c(12, 24))
+plot(plant_bg$latitude ~ plant_bg$longitude)
 
 points(plant_df$latitude ~ plant_df$longitude,
-     xlim = c(-100, -80),
-     ylim = c(12, 24),
+     # xlim = c(-100, -80),
+     # ylim = c(12, 24),
      col = "red")
 
 plant_points <- bind_rows(plant_df %>%
@@ -156,8 +155,6 @@ plant_points <- bind_rows(plant_df %>%
 ### Write To File ###
 #####################
 
-saveRDS(cat_points,
-        "data/species_data_prionailurus_bengalensis.rds")
+saveRDS(cat_points, "data/species_data_prionailurus_bengalensis.rds")
 
-saveRDS(plant_points,
-        "data/species_data_zamia_polymorpha.rds")
+saveRDS(plant_points, "data/species_data_zamia_polymorpha.rds")
