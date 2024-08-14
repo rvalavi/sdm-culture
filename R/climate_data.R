@@ -37,32 +37,47 @@ for (tp in periods) {
         # NOTE: for download just use the parent dir; then delete original
         dwn_name <- sprintf("%s/%s.tif", dir_base, vr)
         
-        tryCatch(
-            {
-                download.file(url = url_full, destfile = dwn_name, method = "curl")
-            },
-            error = function(cond) {
-                message("Failed download: ", vr, " of ", tp)
-                next
-            }
-        )
-        
         # output dir base on the input period
         out_dir <- file.path(dir_base, clean_name(tp))
         if (!dir.exists(out_dir)) 
             dir.create(out_dir, recursive = TRUE)
         
+        out_ca <- sprintf("%s/%s_%s.tif", out_dir, vr, "cat")
+        out_pl <- sprintf("%s/%s_%s.tif", out_dir, vr, "plant")
+        
+        # do not download the file if already available
+        if (any(!file.exists(c(out_ca, out_pl)))) {
+            tryCatch(
+                {
+                    download.file(url = url_full, destfile = dwn_name, method = "curl")
+                },
+                error = function(cond) {
+                    message("Failed download: ", vr, " of ", tp)
+                    next
+                }
+            )
+        }
+        
         # read and mask the data
-        terra::crop(
-            x = terra::rast(dwn_name), 
-            y = cat_ext,
-            filename = sprintf("%s/%s_%s.tif", out_dir, vr, "cat")
-        )
-        terra::crop(
-            x = terra::rast(dwn_name), 
-            y = plant_ext,
-            filename = sprintf("%s/%s_%s.tif", out_dir, vr, "plant")
-        )
+        if (file.exists(out_ca)) {
+            cat("The", vr, "for cat species exists!\n")
+        } else {
+            terra::crop(
+                x = terra::rast(dwn_name),
+                y = cat_ext,
+                filename = out_ca
+            )
+        }
+        
+        if (file.exists(out_pl)) {
+            cat("The", vr, "for plant species exists!\n")
+        } else {
+            terra::crop(
+                x = terra::rast(dwn_name),
+                y = plant_ext,
+                filename = out_pl
+            )
+        }
         
         # remove the main file
         unlink(dwn_name)
