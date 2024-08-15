@@ -33,33 +33,33 @@ covar_rast[[paste0("bio", 12:19)]] <- log(covar_rast[[paste0("bio", 12:19)]])
 # PCA model ---------------------------------------------------------------
 
 if (periods == "1981-2010") {
-tm <- Sys.time()
-set.seed(3010)
-pca <- terra::prcomp(
-    x = covar_rast, 
-    center = TRUE, 
-    scale. = TRUE,
-    maxcell = 1e7
-)
-Sys.time() - tm
-
-pca_var <- pca$sdev^2 / sum(pca$sdev^2)
-num_pcs <- seq_along(pca_var)
-plot(
-    num_pcs,
-    pca_var,
-    type = "b",
-    xlab = "PC",
-    ylab = "Explained variance"
-)
-
-selected_pcs <- num_pcs[cumsum(pca_var) <= 0.995]
-print(
-    cumsum(pca_var)
-)
-print(
-    selected_pcs
-)
+    tm <- Sys.time()
+    set.seed(3010)
+    pca <- terra::prcomp(
+        x = covar_rast, 
+        center = TRUE, 
+        scale. = TRUE,
+        maxcell = 1e7
+    )
+    Sys.time() - tm
+    
+    pca_var <- pca$sdev^2 / sum(pca$sdev^2)
+    num_pcs <- seq_along(pca_var)
+    plot(
+        num_pcs,
+        pca_var,
+        type = "b",
+        xlab = "PC",
+        ylab = "Explained variance"
+    )
+    
+    selected_pcs <- num_pcs[cumsum(pca_var) <= 0.995]
+    print(
+        cumsum(pca_var)
+    )
+    print(
+        selected_pcs
+    )
     
 }
 

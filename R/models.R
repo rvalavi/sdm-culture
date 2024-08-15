@@ -28,7 +28,7 @@ suppressPackageStartupMessages({
     library(gbm)
     library(mgcv)
     library(glmnet)
-    library(dismo) #***** or predicts
+    library(dismo) #***** or predicts?
     library(precrec)
 })
 
