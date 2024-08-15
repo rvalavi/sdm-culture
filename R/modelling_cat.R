@@ -135,7 +135,6 @@ plot(pred_current)
 
 
 # projections -------------------------------------------------------------
-
 f1_rast <- terra::rast(
     list.files(
         path = "data/CHELSA_data/PCA/2041-2070_gfdl-esm4_ssp585/",

@@ -2,7 +2,7 @@ library(magrittr)
 library(terra)
 
 cat_ext <- terra::ext(c(65, 145, -10, 50)) 
-plant_ext <- terra::ext(c(-100, -65, 6, 24)) 
+plant_ext <- terra::ext(c(-100, -65, 11, 24)) 
 
 # periods to download
 periods <- c(
