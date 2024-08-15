@@ -274,13 +274,16 @@ maxent_param <- function(data, y = "occ", folds = NULL, k = 5, filepath = tempdi
     )
     AUCs <- c()
     for(n in seq_along(grid[,1])){
+        
         full_pred <- data.frame()
-        for(i in seq_len(length(folds))){
-            trainSet <- unlist(folds[-i])
-            testSet <- unlist(folds[i])
+        nfold <- sort(unique(folds))
+        
+        for(k in nfold){
+            train_set <- which(folds != k)
+            test_set <- which(folds == k)
             if(inherits(try(
-                maxmod <- dismo::maxent(x = data[trainSet, covars],
-                                        p = data$occ[trainSet],
+                maxmod <- dismo::maxent(x = data[train_set, covars],
+                                        p = data$occ[train_set],
                                         removeDuplicates = FALSE,
                                         path = filepath,
                                         args = as.character(unlist(grid[n, ]))
@@ -288,13 +291,14 @@ maxent_param <- function(data, y = "occ", folds = NULL, k = 5, filepath = tempdi
             ), "try-error")){
                 next
             }
-            mod_pred <- predict(maxmod, data[testSet, covars], args = "outputformat=cloglog")
-            pred_df <- data.frame(score = mod_pred, label = data$occ[testSet])
+            mod_pred <- predict(maxmod, data[test_set, covars], args = "outputformat=cloglog")
+            pred_df <- data.frame(score = mod_pred, label = data$occ[test_set])
             full_pred <- rbind(full_pred, pred_df)
         }
+        
         AUCs[n] <- precrec::auc(
             precrec::evalmod(scores = full_pred$score, labels = full_pred$label)
-        )[1,4]
+        )[1, 4]
     }
     best_param <- as.character(unlist(grid[which.max(AUCs), ]))
     
