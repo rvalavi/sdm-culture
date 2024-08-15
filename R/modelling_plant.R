@@ -31,17 +31,19 @@ occ_xy <- readRDS("data/species_data_zamia_polymorpha.rds") %>%
     rm_duplicates(r = covar_rast, column = "occ")
 
 table(occ_xy$occ)
+points(occ_xy$x, occ_xy$y)
+points(occ_xy$x[occ_xy$occ == 1], occ_xy$y[occ_xy$occ == 1], col = "red")
 
 # extract values ----------------------------------------------------------
-model_data <- extract_value(covar_rast, occ_xy, drop_na = TRUE)
-head(model_data)
-table(model_data$occ)
+species_data <- extract_value(covar_rast, occ_xy, drop_na = TRUE)
+# head(model_data)
+table(species_data$occ)
 
 # spatial cv --------------------------------------------------------------
-data_sf <- sf::st_as_sf(model_data, coords = c("x", "y"), crs = 4326)
+data_sf <- sf::st_as_sf(species_data, coords = c("x", "y"), crs = 4326)
 
-sac <- blockCV::cv_spatial_autocor(r = covar_rast)
-sac$range
+# sac <- blockCV::cv_spatial_autocor(r = covar_rast)
+# sac$range
 
 set.seed(3010)
 scv <- blockCV::cv_spatial(
@@ -58,19 +60,41 @@ scv <- blockCV::cv_spatial(
 # cv_plot(cv = scv, x = data_sf)
 
 # model evaluation --------------------------------------------------------
+# select only modelling columns
+model_data <- dplyr::select(species_data, -x, -y) #%>% 
+str(model_data)
+anyNA(model_data)
 
+folds <- scv$folds_list
+
+AUCs <- c()
+
+for(k in seq_len(length(folds))){
+    train_set <- unlist(folds[[k]][1]) 
+    test_set <- unlist(folds[[k]][2])
+    
+    mod <- ensemble(
+        x = model_data[train_set, ],
+        y = "occ", 
+        fold_ids = scv$folds_ids,
+        models = c("GLM", "GAM", "GBM", "RF", "Maxent")
+    )
+    
+    preds <- predict(mod, model_data[test_set, ], type = "response")
+    AUCs[k] <- precrec::auc(evalmod(scores = pred, labels = model_data$occ[test_set]))[1,4]
+}
+
+print(AUCs)
+mean(AUCs)
+sd(AUCs)
 
 
 # final model fitting -----------------------------------------------------
-# select only modelling columns
-training_data <- dplyr::select(model_data, -x, -y) #%>% 
-str(training_data)
-anyNA(training_data)
 
 # fitting the with spatial CV model tuning
 tm <- Sys.time()
 model <- ensemble(
-    x = training_data,
+    x = model_data,
     y = "occ", 
     fold_ids = scv$folds_ids, 
     models = c("GLM", "GAM", "GBM", "RF", "Maxent")
@@ -93,8 +117,8 @@ pred_current <- terra::predict(
         "mgcv",
         "glmnet"
     ),
-    na.rm = TRUE
-    # filename = "outputs/plant/pred_current.tif"
+    na.rm = TRUE,
+    filename = "outputs/plant/pred_current.tif"
 )
 Sys.time() - tm
 
@@ -109,7 +133,8 @@ f1_rast <- terra::rast(
         pattern = "_plant.tif$", 
         full.names = TRUE
     )
-)
+) %>% 
+    terra::crop(the_ext)
 
 tm <- Sys.time()
 pred_f1 <- terra::predict(
@@ -123,8 +148,8 @@ pred_f1 <- terra::predict(
         "mgcv",
         "glmnet"
     ),
-    na.rm = TRUE
-    # filename = "outputs/plant/pred_f1.tif"
+    na.rm = TRUE,
+    filename = "outputs/plant/pred_f1.tif"
 )
 Sys.time() - tm
 
@@ -138,7 +163,8 @@ f2_rast <- terra::rast(
         pattern = "_plant.tif$", 
         full.names = TRUE
     )
-)
+) %>% 
+    terra::crop(the_ext)
 
 tm <- Sys.time()
 pred_f2 <- terra::predict(
@@ -152,8 +178,8 @@ pred_f2 <- terra::predict(
         "mgcv",
         "glmnet"
     ),
-    na.rm = TRUE
-    # filename = "outputs/plant/pred_f2.tif"
+    na.rm = TRUE,
+    filename = "outputs/plant/pred_f2.tif"
 )
 Sys.time() - tm
 
