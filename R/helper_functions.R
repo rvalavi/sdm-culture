@@ -1,12 +1,11 @@
 # calculate AUC
 calc_auc <- function(pred, label) {
-    reuqire(precrec)
+    require(precrec)
     
     return(
         precrec::auc(precrec::evalmod(scores = pred, labels = label))[1,4]
     )
 }
-
 
 
 # filter coordinates based on cells
@@ -34,6 +33,7 @@ rm_duplicates <- function(x, r, column = "occ") {
         )
     )
 }
+
 
 # extract values and drop na
 extract_value <- function(r, x, drop_na = TRUE) {

@@ -192,7 +192,7 @@ print.ensemble <- function(x, ...){
     print(class(x))
     mods <- names(x)[!sapply(x, is.null)]
     mods <- mods[mods != "quad"]
-    cat("Models:", paste(mods, collapse = ", "))
+    cat("Models:", paste(mods, collapse = ", "), "\n")
 }
 
 # predict with ensemble object

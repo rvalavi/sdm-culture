@@ -1,3 +1,4 @@
+remotes::install_github("rvalavi/myspatial")
 library(tidyverse)
 library(terra)
 library(blockCV)
@@ -10,20 +11,16 @@ source("R/helper_functions.R")
 #
 # get climate data --------------------------------------------------------
 world_map <- geodata::world(resolution = 4, path = "data")
-the_ext <- terra::ext(c(-100, -65, 11, 24))
+the_ext <- terra::ext(c(-100, -74, 12, 24))
 
 covar_rast <- terra::rast(
     list.files(
         path = "data/CHELSA_data/PCA/1981-2010/",
-        # path = "data/CHELSA_data/1981-2010/", 
         pattern = "_plant.tif$",
         full.names = TRUE
     )
 ) %>% 
-    # terra::subset(paste0("bio", c(1, 2, 5, 12, 15))) %>% 
-    # terra::crop(the_ext) %>% 
-    # terra::mask(world_map) %>% 
-    identity()
+    terra::crop(the_ext)
 
 plot(covar_rast[[1]])
 plot(world_map, add = TRUE)
@@ -48,11 +45,12 @@ model_data <- dplyr::select(species_data, -x, -y) #%>%
 str(model_data)
 anyNA(model_data)
 
+#
 # spatial cv --------------------------------------------------------------
 data_sf <- sf::st_as_sf(species_data, coords = c("x", "y"), crs = 4326)
 
 # sac <- blockCV::cv_spatial_autocor(r = covar_rast)
-# sac$range
+# sac$range # 210,000
 
 set.seed(3010)
 scv <- blockCV::cv_spatial(
@@ -66,6 +64,7 @@ scv <- blockCV::cv_spatial(
     max_pixel = 3e6
 ) 
 
+blockCV::cv_similarity(scv, data_sf, covar_rast)
 # cv_plot(cv = scv, x = data_sf)
 
 # model evaluation --------------------------------------------------------
@@ -80,7 +79,6 @@ for(k in seq_len(length(folds))){
     mod <- ensemble(
         x = model_data[train_set, ],
         y = "occ", 
-        # fold_ids = scv$folds_ids,
         models = c("GLM", "GAM", "GBM", "RF", "Maxent")
     )
     
@@ -94,12 +92,12 @@ sd(AUCs)
 
 
 # final model fitting -----------------------------------------------------
-# fitting the with spatial CV model tuning?
+# fitting the with model tuning
 tm <- Sys.time()
 model <- ensemble(
     x = model_data,
     y = "occ", 
-    # fold_ids = scv$folds_ids, 
+    fold_ids = NULL, # random-cv tuning
     models = c("GLM", "GAM", "GBM", "RF", "Maxent")
 )
 Sys.time() - tm
@@ -128,12 +126,12 @@ pred_current <- terra::predict(
         "mgcv",
         "glmnet"
     ),
-    na.rm = TRUE
-    # filename = "outputs/plant/pred_current.tif",
-    # overwrite = TRUE
+    na.rm = TRUE,
+    filename = "outputs/plant/pred_current.tif",
+    wopt = list(names = "current"),
+    overwrite = TRUE
 )
 Sys.time() - tm
-names(pred_current) <- "Current"
 
 plot(pred_current, range = c(0, 1))
 
@@ -141,16 +139,12 @@ plot(pred_current, range = c(0, 1))
 # projections -------------------------------------------------------------
 f1_rast <- terra::rast(
     list.files(
-        # path = "data/CHELSA_data/PCA/2041-2070_gfdl-esm4_ssp585/",
-        path = "data/CHELSA_data/2041-2070_gfdl-esm4_ssp585/",
+        path = "data/CHELSA_data/PCA/2041-2070_gfdl-esm4_ssp585/",
         pattern = "_plant.tif$", 
         full.names = TRUE
     )
 ) %>% 
-    terra::subset(paste0("bio", c(1, 2, 5, 12, 15))) %>% 
-    terra::crop(the_ext) %>% 
-    terra::mask(world_map)
-
+    terra::crop(the_ext)
 
 tm <- Sys.time()
 pred_f1 <- terra::predict(
@@ -164,28 +158,25 @@ pred_f1 <- terra::predict(
         "mgcv",
         "glmnet"
     ),
-    na.rm = TRUE
-    # filename = "outputs/plant/pred_f1.tif"
+    na.rm = TRUE,
+    filename = "outputs/plant/pred_f1.tif",
+    wopt = list(names = "proj-2041-2070"),
+    overwrite = TRUE
 )
 Sys.time() - tm
-names(pred_f1) <- "Proj 2041-2070"
 
-plot(pred_f1)
+plot(pred_f1, range = c(0, 1))
 
 
 
 f2_rast <- terra::rast(
     list.files(
-        # path = "data/CHELSA_data/PCA/2071-2100_gfdl-esm4_ssp585/",
         path = "data/CHELSA_data/2071-2100_gfdl-esm4_ssp585/",
         pattern = "_plant.tif$", 
         full.names = TRUE
     )
 ) %>% 
-    terra::subset(paste0("bio", c(1, 2, 5, 12, 15))) %>% 
-    terra::crop(the_ext) %>% 
-    terra::mask(world_map)
-
+    terra::crop(the_ext)
 
 tm <- Sys.time()
 pred_f2 <- terra::predict(
@@ -201,10 +192,10 @@ pred_f2 <- terra::predict(
     ),
     na.rm = TRUE,
     filename = "outputs/plant/pred_f2.tif",
+    wopt = list(names = "proj-2071-2100"),
     overwrite = TRUE
 )
 Sys.time() - tm
-names(pred_f2) <- "Proj 2071-2100"
 
 plot(pred_f2, range = c(0, 1))
 
@@ -214,5 +205,4 @@ terra::panel(
     range = c(0, 1),
     nr = 2
 )
-
 

@@ -1,3 +1,4 @@
+# remotes::install_github("rvalavi/myspatial")
 library(tidyverse)
 library(terra)
 library(blockCV)
@@ -13,16 +14,14 @@ world_map <- geodata::world(resolution = 4, path = "data")
 
 covar_rast <- terra::rast(
     list.files(
-        path = "data/CHELSA_data/1981-2010/", 
+        path = "data/CHELSA_data/PCA/1981-2010/", 
         pattern = "_cat.tif$",
         full.names = TRUE
     )
 ) %>% 
-    terra::subset(paste0("bio", c(1, 2, 5, 12, 15))) %>% 
     terra::mask(world_map)
 
-plot(covar_rast)
-
+# plot(covar_rast)
 plot(covar_rast[[1]])
 plot(world_map, add = TRUE)
 
@@ -82,11 +81,10 @@ for(k in seq_len(length(folds))){
     mod <- ensemble(
         x = model_data[train_set, ],
         y = "occ", 
-        # fold_ids = scv$folds_ids,
         models = c("GLM", "GAM", "GBM", "RF", "Maxent")
     )
     
-    preds <- predict(mod, model_data[test_set, ], type = "response")
+    preds <- predict(mod, model_data[test_set, -1], type = "response")
     AUCs[k] <- calc_auc(preds, model_data$occ[test_set])
 }
 
@@ -96,12 +94,12 @@ sd(AUCs)
 
 #
 # final model fitting -----------------------------------------------------
-# fitting the with spatial CV model tuning
+# fitting the with model tuning
 tm <- Sys.time()
 model <- ensemble(
     x = model_data,
     y = "occ", 
-    # fold_ids = scv$folds_ids,
+    fold_ids = NULL, # random-cv tuning
     models = c("GLM", "GAM", "GBM", "RF", "Maxent")
 )
 Sys.time() - tm
@@ -109,13 +107,15 @@ Sys.time() - tm
 print(model)
 
 # check the response curves
-myspatial::ggResponse(models = model, covariates = model_data[, -1], type = "response")
+myspatial::ggResponse(
+    models = model, 
+    covariates = model_data[, -1], 
+    type = "response"
+)
 
 #
 # predicting rasters ------------------------------------------------------
 terra::terraOptions(steps = 30)
-
-covar_rast <- terra::aggregate(covar_rast, fact = 10)
 
 # predict to raster layers
 tm <- Sys.time()
@@ -131,11 +131,13 @@ pred_current <- terra::predict(
         "glmnet"
     ),
     na.rm = TRUE,
-    filename = "outputs/cat/pred_current.tif"
+    filename = "outputs/cat/pred_current.tif",
+    wopt = list(names = "current"),
+    overwrite = TRUE
 )
 Sys.time() - tm
 
-plot(pred_current)
+plot(pred_current, range = c(0, 1))
 
 
 # projections -------------------------------------------------------------
@@ -160,11 +162,13 @@ pred_f1 <- terra::predict(
         "glmnet"
     ),
     na.rm = TRUE,
-    filename = "outputs/cat/pred_f1.tif"
+    filename = "outputs/cat/pred_f1.tif",
+    wopt = list(names = "proj-2041-2070"),
+    overwrite = TRUE
 )
 Sys.time() - tm
 
-plot(pred_f1)
+plot(pred_f1, range = c(0, 1))
 
 
 
@@ -189,9 +193,18 @@ pred_f2 <- terra::predict(
         "glmnet"
     ),
     na.rm = TRUE,
-    filename = "outputs/cat/pred_f2.tif"
+    filename = "outputs/cat/pred_f2.tif",
+    wopt = list(names = "proj-2071-2100"),
+    overwrite = TRUE
 )
 Sys.time() - tm
 
-plot(pred_f2)
+plot(pred_f2, range = c(0, 1))
+
+
+terra::panel(
+    x = c(pred_current, pred_f1, pred_f2), 
+    range = c(0, 1),
+    nr = 2
+)
 

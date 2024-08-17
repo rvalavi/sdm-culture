@@ -1,7 +1,3 @@
-#####################
-### Load Packages ###
-#####################
-
 library(tidyverse)
 library(spocc)
 library(rgbif)
@@ -15,14 +11,11 @@ sf_bbox <- function(x) {
   )
 }
 
-###############################
-### Download Data From GBIF ###
-###############################
 
+# Download Data From GBIF -------------------------------------------------
 ## Indian leopard cat
 ## Prionailurus bengalensis
 ## Distinct from Prionailurus javanensis since 2017. Remove any of these
-
 
 cat_ext <- c(50, 150, -10, 50)
 
@@ -59,12 +52,9 @@ plant_background <- occ(query = "Cycadopsida",
                         limit = 50000,
                         geometry = sf_bbox(plant_ext))
 
-##################
-### Clean Data ###
-##################
 
+# Clean Data --------------------------------------------------------------
 ## Indian leopard cat
-
 cat_df <- cat_data$gbif$data[[1]] %>%
   as_tibble() %>%
   filter(name %in% c("Prionailurus bengalensis (Kerr, 1792)",
@@ -151,10 +141,9 @@ plant_points <- bind_rows(plant_df %>%
   relocate(species, 
            .before = longitude)
 
-#####################
-### Write To File ###
-#####################
 
+# Write To File -----------------------------------------------------------
 saveRDS(cat_points, "data/species_data_prionailurus_bengalensis.rds")
 
 saveRDS(plant_points, "data/species_data_zamia_polymorpha.rds")
+
