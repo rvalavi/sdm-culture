@@ -42,7 +42,7 @@ cat_background <- occ(query = "Felis",
 ## Synonym: Z. polymorpha
 
 # plant_ext <- c(-100, -80, 12, 24)
-plant_ext <- c(-94, -86, 6, 24)
+plant_ext <- c(-100, -65, 6, 24)
 
 plant_data <- occ(query = "Zamia prasina",
                   from = "gbif",
