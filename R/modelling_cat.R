@@ -13,7 +13,7 @@ world_map <- geodata::world(resolution = 4, path = "data")
 
 covar_rast <- terra::rast(
     list.files(
-        path = "data/CHELSA_data/PCA/1981-2010/", 
+        path = "data/CHELSA_data/1981-2010/", 
         pattern = "_cat.tif$",
         full.names = TRUE
     )
@@ -47,7 +47,7 @@ model_data <- dplyr::select(species_data, -x, -y) #%>%
 str(model_data)
 anyNA(model_data)
 
-
+#
 # spatial cv --------------------------------------------------------------
 data_sf <- sf::st_as_sf(species_data, coords = c("x", "y"), crs = 4326)
 
@@ -101,12 +101,32 @@ tm <- Sys.time()
 model <- ensemble(
     x = model_data,
     y = "occ", 
-    fold_ids = scv$folds_ids,
+    # fold_ids = scv$folds_ids,
     models = c("GLM", "GAM", "GBM", "RF", "Maxent")
 )
 Sys.time() - tm
 
 print(model)
+
+# check the response curves
+myspatial::ggResponse(models = model, covariates = model_data[, -1], type = "response")
+
+model1 <- model
+model1[["GLM-Lasso"]] <- NULL
+model1[["quad"]] <- NULL
+
+model1[["GAM"]] <- NULL
+
+model1[["GBM"]] <- NULL
+
+model1[["RF"]] <- NULL
+
+model1[["Maxent"]] <- NULL
+
+print(model1)
+
+debugonce(ggResponse)
+myspatial::ggResponse(models = model1, covariates = model_data[, -1], type = "response")
 
 # predicting rasters ------------------------------------------------------
 terra::terraOptions(steps = 30)

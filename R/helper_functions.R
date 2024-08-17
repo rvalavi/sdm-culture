@@ -44,3 +44,4 @@ extract_value <- function(r, x, drop_na = TRUE) {
         }
     )
 }
+
