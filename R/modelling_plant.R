@@ -10,7 +10,6 @@ source("R/helper_functions.R")
 
 #
 # get climate data --------------------------------------------------------
-world_map <- geodata::world(resolution = 4, path = "data")
 the_ext <- terra::ext(c(-100, -74, 12, 24))
 
 covar_rast <- terra::rast(
