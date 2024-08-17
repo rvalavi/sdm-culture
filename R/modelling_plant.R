@@ -39,6 +39,11 @@ species_data <- extract_value(covar_rast, occ_xy, drop_na = TRUE)
 # head(model_data)
 table(species_data$occ)
 
+# select only modelling columns
+model_data <- dplyr::select(species_data, -x, -y) #%>% 
+str(model_data)
+anyNA(model_data)
+
 # spatial cv --------------------------------------------------------------
 data_sf <- sf::st_as_sf(species_data, coords = c("x", "y"), crs = 4326)
 
@@ -60,11 +65,6 @@ scv <- blockCV::cv_spatial(
 # cv_plot(cv = scv, x = data_sf)
 
 # model evaluation --------------------------------------------------------
-# select only modelling columns
-model_data <- dplyr::select(species_data, -x, -y) #%>% 
-str(model_data)
-anyNA(model_data)
-
 folds <- scv$folds_list
 
 AUCs <- c()
@@ -90,18 +90,21 @@ sd(AUCs)
 
 
 # final model fitting -----------------------------------------------------
-
-# fitting the with spatial CV model tuning
+# fitting the with spatial CV model tuning?
 tm <- Sys.time()
 model <- ensemble(
     x = model_data,
     y = "occ", 
-    fold_ids = scv$folds_ids, 
+    # fold_ids = scv$folds_ids, 
     models = c("GLM", "GAM", "GBM", "RF", "Maxent")
 )
 Sys.time() - tm
 
 print(model)
+
+# check the response curves
+myspatial::ggResponse(models = model, covariates = model_data[, -1], type = "response")
+
 
 # predicting rasters ------------------------------------------------------
 # predict to raster layers

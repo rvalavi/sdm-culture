@@ -209,7 +209,7 @@ predict.ensemble <- function(object, newdata, ...){
     if (!is.null(object[["GLM-Lasso"]])) {
         pred_quad <- predict(object[["quad"]], newdata = newdata)
         pred_sparse <- sparse.model.matrix(~., pred_quad)
-        pred_ls <- predict(object[["GLM-Lasso"]], pred_sparse, s = "lambda.min", ...)
+        pred_ls <- predict(object[["GLM-Lasso"]], pred_sparse, s = "lambda.min", ...)[, 1]
     }
     
     # predict gam model
@@ -235,7 +235,7 @@ predict.ensemble <- function(object, newdata, ...){
     }
     
     out <- data.frame(
-        l = pred_ls[, 1],
+        l = pred_ls,
         g = pred_gm,
         r = pred_rf,
         b = pred_br,
@@ -243,7 +243,7 @@ predict.ensemble <- function(object, newdata, ...){
     )
     
     return(
-        rowMeans(pred_ls, na.rm = TRUE)
+        rowMeans(out, na.rm = TRUE)
     )
 }
 
