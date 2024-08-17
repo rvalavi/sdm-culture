@@ -1,3 +1,14 @@
+# calculate AUC
+calc_auc <- function(pred, label) {
+    reuqire(precrec)
+    
+    return(
+        precrec::auc(precrec::evalmod(scores = pred, labels = label))[1,4]
+    )
+}
+
+
+
 # filter coordinates based on cells
 # NOTE: this function will change the order of the rows
 rm_duplicates <- function(x, r, column = "occ") {
@@ -36,7 +47,7 @@ extract_value <- function(r, x, drop_na = TRUE) {
     
     return(
         if (drop_na) {
-            warning("Number of NA rows removed: ", num_na, "\n")
+            message("Number of NA rows removed: ", num_na, "\n")
             vals[ccs, ]
         } else {
             if (num_na > 0) warning("There ", num_na, " NAs rows.\n")

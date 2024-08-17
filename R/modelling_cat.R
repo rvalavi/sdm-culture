@@ -18,7 +18,7 @@ covar_rast <- terra::rast(
         full.names = TRUE
     )
 ) %>% 
-    terra::subset(paste0("bio", c(1, 5, 12, 15))) %>% 
+    terra::subset(paste0("bio", c(1, 2, 5, 12, 15))) %>% 
     terra::mask(world_map)
 
 plot(covar_rast)
@@ -82,12 +82,12 @@ for(k in seq_len(length(folds))){
     mod <- ensemble(
         x = model_data[train_set, ],
         y = "occ", 
-        fold_ids = scv$folds_ids,
+        # fold_ids = scv$folds_ids,
         models = c("GLM", "GAM", "GBM", "RF", "Maxent")
     )
     
     preds <- predict(mod, model_data[test_set, ], type = "response")
-    AUCs[k] <- precrec::auc(evalmod(scores = pred, labels = model_data$occ[test_set]))[1,4]
+    AUCs[k] <- calc_auc(preds, model_data$occ[test_set])
 }
 
 print(AUCs)
@@ -111,23 +111,7 @@ print(model)
 # check the response curves
 myspatial::ggResponse(models = model, covariates = model_data[, -1], type = "response")
 
-model1 <- model
-model1[["GLM-Lasso"]] <- NULL
-model1[["quad"]] <- NULL
-
-model1[["GAM"]] <- NULL
-
-model1[["GBM"]] <- NULL
-
-model1[["RF"]] <- NULL
-
-model1[["Maxent"]] <- NULL
-
-print(model1)
-
-debugonce(ggResponse)
-myspatial::ggResponse(models = model1, covariates = model_data[, -1], type = "response")
-
+#
 # predicting rasters ------------------------------------------------------
 terra::terraOptions(steps = 30)
 

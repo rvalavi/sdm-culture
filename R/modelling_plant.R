@@ -14,12 +14,16 @@ the_ext <- terra::ext(c(-100, -65, 11, 24))
 
 covar_rast <- terra::rast(
     list.files(
-        path = "data/CHELSA_data/PCA/1981-2010/", 
+        path = "data/CHELSA_data/PCA/1981-2010/",
+        # path = "data/CHELSA_data/1981-2010/", 
         pattern = "_plant.tif$",
         full.names = TRUE
     )
 ) %>% 
-    terra::crop(the_ext)
+    # terra::subset(paste0("bio", c(1, 2, 5, 12, 15))) %>% 
+    # terra::crop(the_ext) %>% 
+    # terra::mask(world_map) %>% 
+    identity()
 
 plot(covar_rast[[1]])
 plot(world_map, add = TRUE)
@@ -76,12 +80,12 @@ for(k in seq_len(length(folds))){
     mod <- ensemble(
         x = model_data[train_set, ],
         y = "occ", 
-        fold_ids = scv$folds_ids,
+        # fold_ids = scv$folds_ids,
         models = c("GLM", "GAM", "GBM", "RF", "Maxent")
     )
     
-    preds <- predict(mod, model_data[test_set, ], type = "response")
-    AUCs[k] <- precrec::auc(evalmod(scores = pred, labels = model_data$occ[test_set]))[1,4]
+    preds <- predict(mod, model_data[test_set, -1], type = "response")
+    AUCs[k] <- calc_auc(preds, model_data$occ[test_set])
 }
 
 print(AUCs)
@@ -103,9 +107,13 @@ Sys.time() - tm
 print(model)
 
 # check the response curves
-myspatial::ggResponse(models = model, covariates = model_data[, -1], type = "response")
+myspatial::ggResponse(
+    models = model, 
+    covariates = model_data[, -1], 
+    type = "response"
+)
 
-
+#
 # predicting rasters ------------------------------------------------------
 # predict to raster layers
 tm <- Sys.time()
@@ -120,24 +128,29 @@ pred_current <- terra::predict(
         "mgcv",
         "glmnet"
     ),
-    na.rm = TRUE,
-    filename = "outputs/plant/pred_current.tif"
+    na.rm = TRUE
+    # filename = "outputs/plant/pred_current.tif",
+    # overwrite = TRUE
 )
 Sys.time() - tm
+names(pred_current) <- "Current"
 
-plot(pred_current)
+plot(pred_current, range = c(0, 1))
 
 
 # projections -------------------------------------------------------------
-
 f1_rast <- terra::rast(
     list.files(
-        path = "data/CHELSA_data/PCA/2041-2070_gfdl-esm4_ssp585/",
+        # path = "data/CHELSA_data/PCA/2041-2070_gfdl-esm4_ssp585/",
+        path = "data/CHELSA_data/2041-2070_gfdl-esm4_ssp585/",
         pattern = "_plant.tif$", 
         full.names = TRUE
     )
 ) %>% 
-    terra::crop(the_ext)
+    terra::subset(paste0("bio", c(1, 2, 5, 12, 15))) %>% 
+    terra::crop(the_ext) %>% 
+    terra::mask(world_map)
+
 
 tm <- Sys.time()
 pred_f1 <- terra::predict(
@@ -151,10 +164,11 @@ pred_f1 <- terra::predict(
         "mgcv",
         "glmnet"
     ),
-    na.rm = TRUE,
-    filename = "outputs/plant/pred_f1.tif"
+    na.rm = TRUE
+    # filename = "outputs/plant/pred_f1.tif"
 )
 Sys.time() - tm
+names(pred_f1) <- "Proj 2041-2070"
 
 plot(pred_f1)
 
@@ -162,12 +176,16 @@ plot(pred_f1)
 
 f2_rast <- terra::rast(
     list.files(
-        path = "data/CHELSA_data/PCA/2071-2100_gfdl-esm4_ssp585/",
+        # path = "data/CHELSA_data/PCA/2071-2100_gfdl-esm4_ssp585/",
+        path = "data/CHELSA_data/2071-2100_gfdl-esm4_ssp585/",
         pattern = "_plant.tif$", 
         full.names = TRUE
     )
 ) %>% 
-    terra::crop(the_ext)
+    terra::subset(paste0("bio", c(1, 2, 5, 12, 15))) %>% 
+    terra::crop(the_ext) %>% 
+    terra::mask(world_map)
+
 
 tm <- Sys.time()
 pred_f2 <- terra::predict(
@@ -182,9 +200,19 @@ pred_f2 <- terra::predict(
         "glmnet"
     ),
     na.rm = TRUE,
-    filename = "outputs/plant/pred_f2.tif"
+    filename = "outputs/plant/pred_f2.tif",
+    overwrite = TRUE
 )
 Sys.time() - tm
+names(pred_f2) <- "Proj 2071-2100"
 
-plot(pred_f2)
+plot(pred_f2, range = c(0, 1))
+
+
+terra::panel(
+    x = c(pred_current, pred_f1, pred_f2), 
+    range = c(0, 1),
+    nr = 2
+)
+
 
