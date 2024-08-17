@@ -80,7 +80,7 @@ cat_df <- cat_data$gbif$data[[1]] %>%
                      "Prionailurus bengalensis horsfieldii (Gray, 1842)"),
          !is.na(longitude),
          !is.na(latitude),
-         year >= 1990,
+         year >= 1981,
          coordinateUncertaintyInMeters <= 5000 | is.na(coordinateUncertaintyInMeters))
 
 cat_bg <- cat_background$gbif$data[[1]] %>%
@@ -88,7 +88,7 @@ cat_bg <- cat_background$gbif$data[[1]] %>%
   bind_rows(cat_df) %>%
   filter(!is.na(longitude),
          !is.na(latitude),
-         year >= 1990,
+         year >= 1981,
          coordinateUncertaintyInMeters <= 5000 | is.na(coordinateUncertaintyInMeters))
 
 
@@ -121,14 +121,14 @@ plant_df <- bind_rows(plant_data$gbif$data[[1]],
   as_tibble() %>%
   filter(!is.na(longitude),
          !is.na(latitude),
-         year >= 1990,
+         year >= 1981,
          coordinateUncertaintyInMeters <= 5000 | is.na(coordinateUncertaintyInMeters))
   
 plant_bg <- plant_background$gbif$data[[1]] %>%
   as_tibble() %>%
   filter(!is.na(longitude),
          !is.na(latitude),
-         year >= 1990,
+         year >= 1981,
          coordinateUncertaintyInMeters <= 5000 | is.na(coordinateUncertaintyInMeters))
   
 plot(plant_bg$latitude ~ plant_bg$longitude)
