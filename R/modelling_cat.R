@@ -10,7 +10,11 @@ source("R/helper_functions.R")
 
 #
 # get climate data --------------------------------------------------------
+exc_countries <- c("MNG", "KAZ") # "KGZ"
 world_map <- geodata::world(resolution = 4, path = "data")
+world_map <- world_map[!world_map$GID_0 %in% exc_countries]
+
+the_ext <- terra::ext(c(65, 145, -10, 48))
 
 covar_rast <- terra::rast(
     list.files(
@@ -19,6 +23,7 @@ covar_rast <- terra::rast(
         full.names = TRUE
     )
 ) %>% 
+    terra::crop(the_ext) %>% 
     terra::mask(world_map)
 
 # plot(covar_rast)
@@ -50,16 +55,13 @@ anyNA(model_data)
 # spatial cv --------------------------------------------------------------
 data_sf <- sf::st_as_sf(species_data, coords = c("x", "y"), crs = 4326)
 
-# sac <- blockCV::cv_spatial_autocor(r = covar_rast)
-# sac$range
-
 set.seed(3010)
 scv <- blockCV::cv_spatial(
     x = data_sf,
     column = "occ",
     r = covar_rast,
     k = 5,
-    # size = 210000,
+    size = 400000,
     selection = "random", 
     progress = TRUE, 
     max_pixel = 3e6

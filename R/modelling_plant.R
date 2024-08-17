@@ -20,8 +20,22 @@ covar_rast <- terra::rast(
         full.names = TRUE
     )
 ) %>% 
+    c(
+        terra::crop(
+            terra::rast(
+                c(
+                    "data/soil/soil_world/phh2o_0-5cm_mean_30s.tif",
+                    "data/soil/soil_world/soc_0-5cm_mean_30s.tif"
+                )
+            ),
+            terra::ext(.) 
+        )
+    ) %>% 
     terra::crop(the_ext)
 
+names(covar_rast)[9:10] <- c("phh2o", "soc")
+
+# plot(covar_rast)
 plot(covar_rast[[1]])
 plot(world_map, add = TRUE)
 
