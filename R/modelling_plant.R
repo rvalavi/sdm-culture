@@ -1,4 +1,4 @@
-remotes::install_github("rvalavi/myspatial")
+# remotes::install_github("rvalavi/myspatial")
 library(tidyverse)
 library(janitor)
 library(terra)
@@ -12,7 +12,7 @@ source("R/helper_functions.R")
 #
 # get climate data --------------------------------------------------------
 world_map <- geodata::world(resolution = 4, path = "data")
-the_ext <- terra::ext(c(-100, -74, 12, 24))
+the_ext <- terra::ext(c(-100, -77, 7, 24))
 
 covar_rast <- terra::rast(
     c(
@@ -26,9 +26,6 @@ covar_rast <- terra::rast(
 ) %>% 
     terra::crop(the_ext) %>% 
     terra::mask(world_map)
-
-# clearn names
-names(covar_rast)[9] <- c("sand")
 
 # plot(covar_rast)
 plot(covar_rast[[1]])
@@ -161,13 +158,17 @@ plot(pred_current, range = c(0, 1))
 
 # projections -------------------------------------------------------------
 f1_rast <- terra::rast(
-    list.files(
-        path = "data/CHELSA_data/PCA/2041-2070_gfdl-esm4_ssp585/",
-        pattern = "_plant.tif$", 
-        full.names = TRUE
+    c(
+        list.files(
+            path = "data/CHELSA_data/PCA/2041-2070_gfdl-esm4_ssp585/",
+            pattern = "_plant.tif$", 
+            full.names = TRUE
+        ),
+        "data/Topo/MSTPI_plant.tif"
     )
 ) %>% 
-    terra::crop(the_ext)
+    terra::crop(the_ext) %>% 
+    terra::mask(world_map)
 
 tm <- Sys.time()
 pred_f1 <- terra::predict(
@@ -193,13 +194,17 @@ plot(pred_f1, range = c(0, 1))
 
 
 f2_rast <- terra::rast(
-    list.files(
-        path = "data/CHELSA_data/2071-2100_gfdl-esm4_ssp585/",
-        pattern = "_plant.tif$", 
-        full.names = TRUE
+    c(
+        list.files(
+            path = "data/CHELSA_data/PCA/2071-2100_gfdl-esm4_ssp585/",
+            pattern = "_plant.tif$", 
+            full.names = TRUE
+        ),
+        "data/Topo/MSTPI_plant.tif"
     )
 ) %>% 
-    terra::crop(the_ext)
+    terra::crop(the_ext) %>% 
+    terra::mask(world_map)
 
 tm <- Sys.time()
 pred_f2 <- terra::predict(
