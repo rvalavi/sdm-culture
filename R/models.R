@@ -33,6 +33,22 @@ suppressPackageStartupMessages({
 })
 
 
+# change the formula of the variables with low unique value (this causes issue in GAM)
+update_names <- function(x, y, k = 4, thr = 20) {
+    z <- as.numeric(
+        which(
+            apply(x[, y], 2, function(t) length(unique(t)) < thr)
+        )
+    )
+    
+    for (i in z) {
+        y[i] <- paste0(y[i], ", k = ", k)
+    }
+    
+    return(y)
+}
+
+
 # Fitting several models as an ensemble SDM
 #
 # A function to ... 
@@ -92,9 +108,13 @@ ensemble <- function(
         require(mgcv)
         message("Fitting GAM...")
         # fit generalised additive model (GAM))
-        # generating GAM formula
+        
+        # update name with k for case that have low unique values and cause
+        # issue in smoothing
+        var_names <- update_names(x, covars, k = 4, thr = 20)
+        # building the model formula here to include updated names
         gm_form <- reformulate(
-            termlabels = paste0("s(", covars, ")"), 
+            termlabels = paste0("s(", var_names, ")"), 
             response = y
         )
         

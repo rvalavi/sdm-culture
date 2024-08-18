@@ -1,5 +1,6 @@
 remotes::install_github("rvalavi/myspatial")
 library(tidyverse)
+library(janitor)
 library(terra)
 library(blockCV)
 library(sf)
@@ -10,6 +11,7 @@ source("R/helper_functions.R")
 
 #
 # get climate data --------------------------------------------------------
+world_map <- geodata::world(resolution = 4, path = "data")
 the_ext <- terra::ext(c(-100, -74, 12, 24))
 
 covar_rast <- terra::rast(
@@ -19,20 +21,10 @@ covar_rast <- terra::rast(
         full.names = TRUE
     )
 ) %>% 
-    c(
-        terra::crop(
-            terra::rast(
-                c(
-                    "data/soil/soil_world/phh2o_0-5cm_mean_30s.tif",
-                    "data/soil/soil_world/soc_0-5cm_mean_30s.tif"
-                )
-            ),
-            terra::ext(.) 
-        )
-    ) %>% 
     terra::crop(the_ext)
 
-names(covar_rast)[9:10] <- c("phh2o", "soc")
+# clearn names
+names(covar_rast)[9] <- c("sand")
 
 # plot(covar_rast)
 plot(covar_rast[[1]])
@@ -77,15 +69,17 @@ scv <- blockCV::cv_spatial(
     max_pixel = 3e6
 ) 
 
-blockCV::cv_similarity(scv, data_sf, covar_rast)
+# blockCV::cv_similarity(scv, data_sf, covar_rast)
 # cv_plot(cv = scv, x = data_sf)
 
 # model evaluation --------------------------------------------------------
 folds <- scv$folds_list
 
 AUCs <- c()
+models <- list()
 
-for(k in seq_len(length(folds))){
+for(k in seq_len(length(folds))) {
+    
     train_set <- unlist(folds[[k]][1]) 
     test_set <- unlist(folds[[k]][2])
     
@@ -97,11 +91,19 @@ for(k in seq_len(length(folds))){
     
     preds <- predict(mod, model_data[test_set, -1], type = "response")
     AUCs[k] <- calc_auc(preds, model_data$occ[test_set])
+    models[[k]] <- mod
 }
 
 print(AUCs)
-mean(AUCs)
-sd(AUCs)
+print(mean(AUCs))
+print(sd(AUCs))
+
+# check the response curves of with CI of CV
+myspatial::ggResponse2(
+    models = models, 
+    covariates = model_data[, -1], 
+    type = "response"
+)
 
 
 # final model fitting -----------------------------------------------------

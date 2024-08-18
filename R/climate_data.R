@@ -13,7 +13,7 @@ periods <- c(
 # variable of interest
 vars <- c(
     paste0("bio", 1:19),
-    "scd"
+    # "scd"
     # "gdd5",
     # "pet_penman_mean",
     # "pet_penman_range",

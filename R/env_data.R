@@ -23,10 +23,10 @@ for (sv in soil_vars) {
             y = plant_ext,
             filename = out_pl
         )
-    }
     
-    # remove the main file
-    unlink(dwn_name)
-    print(dwn_name)
+        # remove the main file
+        unlink(global_rast)
+        print(global_rast)
+    }
 }
 
