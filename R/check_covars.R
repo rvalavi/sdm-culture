@@ -1,18 +1,18 @@
 library(terra)
 
 # preparing topo data for cat ---------------------------------------------
-cat_rast <- terra::rast("data/CHELSA_data/PCA/1981-2010/pc1_cat.tif")
+the_rast <- terra::rast("data/CHELSA_data/PCA/1981-2010/pc1_plant.tif")
 
 r <- terra::resample(
-    x = terra::rast("data/Topo/MSTPI.tif"),
-    y = cat_rast,
+    x = terra::rast("data/Topo/MSTPI_pl.tif"),
+    y = the_rast,
     method = "near",
-    filename = "data/Topo/MSTPI_cat.tif",
+    filename = "data/Topo/MSTPI_plant.tif",
     names = "TPI"
 )
 
 plot(
-    c(cat_rast, r)
+    c(the_rast, r)
 )
 
 

@@ -15,13 +15,17 @@ world_map <- geodata::world(resolution = 4, path = "data")
 the_ext <- terra::ext(c(-100, -74, 12, 24))
 
 covar_rast <- terra::rast(
-    list.files(
-        path = "data/CHELSA_data/PCA/1981-2010/",
-        pattern = "_plant.tif$",
-        full.names = TRUE
+    c(
+        list.files(
+            path = "data/CHELSA_data/PCA/1981-2010/",
+            pattern = "_plant.tif$",
+            full.names = TRUE
+        ),
+        "data/Topo/MSTPI_plant.tif"
     )
 ) %>% 
-    terra::crop(the_ext)
+    terra::crop(the_ext) %>% 
+    terra::mask(world_map)
 
 # clearn names
 names(covar_rast)[9] <- c("sand")

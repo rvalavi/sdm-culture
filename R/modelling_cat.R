@@ -160,12 +160,17 @@ plot(pred_current, range = c(0, 1))
 
 # projections -------------------------------------------------------------
 f1_rast <- terra::rast(
-    list.files(
-        path = "data/CHELSA_data/PCA/2041-2070_gfdl-esm4_ssp585/",
-        pattern = "_cat.tif$", 
-        full.names = TRUE
+    c(
+        list.files(
+            path = "data/CHELSA_data/PCA/2041-2070_gfdl-esm4_ssp585/",
+            pattern = "_cat.tif$", 
+            full.names = TRUE
+        ),
+        "data/Topo/MSTPI_cat.tif"
     )
-)
+) %>% 
+    terra::crop(the_ext) %>% 
+    terra::mask(world_map)
 
 tm <- Sys.time()
 pred_f1 <- terra::predict(
@@ -191,12 +196,17 @@ plot(pred_f1, range = c(0, 1))
 
 
 f2_rast <- terra::rast(
-    list.files(
-        path = "data/CHELSA_data/PCA/2071-2100_gfdl-esm4_ssp585/",
-        pattern = "_cat.tif$", 
-        full.names = TRUE
+    c(
+        list.files(
+            path = "data/CHELSA_data/PCA/2071-2100_gfdl-esm4_ssp585/",
+            pattern = "_cat.tif$", 
+            full.names = TRUE
+        ),
+        "data/Topo/MSTPI_cat.tif"
     )
-)
+) %>% 
+    terra::crop(the_ext) %>% 
+    terra::mask(world_map)
 
 tm <- Sys.time()
 pred_f2 <- terra::predict(
