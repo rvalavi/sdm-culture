@@ -1,9 +1,13 @@
 library(geodata)
 
-plant_ext <- terra::ext(c(-100, -65, 11, 24)) 
+# plant_ext <- terra::ext(c(-100, -65, 11, 24)) 
+# get the extent from PCA to exactly match
+plant_ext <- terra::ext(
+    terra::rast("data/CHELSA_data/PCA/1981-2010/pc1_plant.tif")
+) 
 
-out_dir <- "data/soil"
-soil_vars <- c("phh2o", "soc") # "cec"
+out_dir <- "data/Soil"
+soil_vars <- c("sand", "silt", "clay", "bdod")
 
 for (sv in soil_vars) {
     
@@ -12,10 +16,10 @@ for (sv in soil_vars) {
     if (file.exists(out_pl)) {
         cat("The", sv, "for plant species exists!\n")
     } else {
-        dwn_name <- geodata::soil_world(var = sv, depth = 5, path = "data/soil")
+        global_rast <- geodata::soil_world(var = sv, depth = 5, path = out_dir)
         
         terra::crop(
-            x = terra::rast(dwn_name),
+            x = global_rast,
             y = plant_ext,
             filename = out_pl
         )

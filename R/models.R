@@ -68,6 +68,26 @@ ensemble <- function(
     num_bg <- as.numeric(table(x[, y, drop=TRUE])["0"]) # number of backgrounds
     case_weights <- ifelse(x[, y, drop = TRUE] == 1, 1, num_pr / num_bg)
     
+    if ("glm" %in% models) {
+        message("Fitting GLM-Lasso...")
+        # fit regularized regression with L1
+        quad_obj <- make_quadratic(x, cols = covars)
+        training_quad <- predict(quad_obj, newdata = x)
+        new_vars <- names(training_quad)[names(training_quad) != y]
+        training_sparse <- sparse.model.matrix(~., training_quad[, new_vars])
+        
+        ls_mod <- glmnet::cv.glmnet(
+            x = training_sparse,
+            y = training_quad[, y],
+            family = "binomial",
+            alpha = 1,
+            weights = case_weights,
+            foldid = fold_ids
+        )
+        plot(ls_mod)
+    }
+    
+    
     if ("gam" %in% models) {
         require(mgcv)
         message("Fitting GAM...")
@@ -88,31 +108,6 @@ ensemble <- function(
         )
     }
     
-    # for RF mtry
-    sqrt_vars <- floor(
-        sqrt(
-            length(covars)
-        )
-    )
-    
-    # NOTE: this RF is for binary classification with down-sampling
-    if ("rf" %in% models) {
-        message("Fitting RF with down-sampling...")
-        # fit random forest down-sampled with ranger
-        rf_mod <- random_forest(
-            data = x,
-            y = y,
-            splitrule = c("gini", "hellinger"),
-            num.trees = 1000, # enough trees to learn with balanced trees
-            mtry = 2:(min(length(covars), max(5, sqrt_vars))),
-            # max.depth = NULL, # allow full depth for down-sampling
-            foldid = fold_ids,
-            sample.fraction = num_pr / num_bg, # for down-sampling
-            case.weights = case_weights, # for down-sampling
-            threads = NULL, # full treads
-            plot = TRUE
-        )
-    }
     
     if ("gbm" %in% models) {
         message("Fitting GBM...")
@@ -134,25 +129,34 @@ ensemble <- function(
         )
     }
     
-    if ("glm" %in% models) {
-        message("Fitting GLM-Lasso...")
-        # fit regularized regression with L1
-        quad_obj <- make_quadratic(x, cols = covars)
-        training_quad <- predict(quad_obj, newdata = x)
-        new_vars <- names(training_quad)[names(training_quad) != y]
-        training_sparse <- sparse.model.matrix(~., training_quad[, new_vars])
-        
-        ls_mod <- glmnet::cv.glmnet(
-            x = training_sparse,
-            y = training_quad[, y],
-            family = "binomial",
-            alpha = 1,
-            weights = case_weights,
-            foldid = fold_ids
+    
+    # for RF mtry
+    sqrt_vars <- floor(
+        sqrt(
+            length(covars)
         )
-        plot(ls_mod)
+    )
+    # NOTE: this RF is for binary classification with down-sampling
+    if ("rf" %in% models) {
+        message("Fitting RF with down-sampling...")
+        # fit random forest down-sampled with ranger
+        rf_mod <- random_forest(
+            data = x,
+            y = y,
+            splitrule = c("gini", "hellinger"),
+            num.trees = 1000, # enough trees to learn with balanced trees
+            mtry = 2:(min(length(covars), max(5, sqrt_vars))),
+            # max.depth = NULL, # allow full depth for down-sampling
+            foldid = fold_ids,
+            sample.fraction = num_pr / num_bg, # for down-sampling
+            case.weights = case_weights, # for down-sampling
+            threads = NULL, # full treads
+            plot = TRUE
+        )
     }
     
+    
+    # NOTE: Maxent models is only for binary presence-background data
     if ("maxent" %in% models) {
         message("Fitting Maxent...")
         # tune maxent parameters
@@ -217,15 +221,15 @@ predict.ensemble <- function(object, newdata, ...){
         pred_gm <- predict(object[["GAM"]], newdata, ...)
     }
     
-    # predict rf with ranger
-    if (!is.null(object[["RF"]])) {
-        pred_rf <- predict(object[["RF"]], newdata, ...)$predictions[,"1"]
-    }
-    
     # predict brt with the best tree number
     brt <- object[["GBM"]]
     if (!is.null(brt)) {
         pred_br <- predict(brt, newdata, n.trees = brt$gbm.call$best.trees, ...)
+    }
+    
+    # predict rf with ranger
+    if (!is.null(object[["RF"]])) {
+        pred_rf <- predict(object[["RF"]], newdata, ...)$predictions[,"1"]
     }
     
     # predict brt with the best tree number

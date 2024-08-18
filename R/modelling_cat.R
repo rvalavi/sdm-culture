@@ -17,10 +17,14 @@ world_map <- world_map[!world_map$GID_0 %in% exc_countries]
 the_ext <- terra::ext(c(65, 145, -10, 48))
 
 covar_rast <- terra::rast(
-    list.files(
-        path = "data/CHELSA_data/PCA/1981-2010/", 
-        pattern = "_cat.tif$",
-        full.names = TRUE
+    c(
+        list.files(
+            path = "data/CHELSA_data/PCA/1981-2010/", 
+            pattern = "_cat.tif$",
+            full.names = TRUE
+        ),
+        "data/CHELSA_data/1981-2010/scd_cat.tif",
+        "data/Topo/MSTPI_cat.tif"
     )
 ) %>% 
     terra::crop(the_ext) %>% 
@@ -83,7 +87,8 @@ for(k in seq_len(length(folds))){
     mod <- ensemble(
         x = model_data[train_set, ],
         y = "occ", 
-        models = c("GLM", "GAM", "GBM", "RF", "Maxent")
+        # models = c("GLM", "GAM", "GBM", "RF", "Maxent")
+        models = c("GLM", "GAM", "RF")
     )
     
     preds <- predict(mod, model_data[test_set, -1], type = "response")
