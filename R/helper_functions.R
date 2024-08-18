@@ -7,6 +7,26 @@ calc_auc <- function(pred, label) {
     )
 }
 
+# calculate AU-PRC
+calc_prc <- function(pred, label) {
+    require(precrec)
+    
+    return(
+        precrec::auc(precrec::evalmod(scores = pred, labels = label))[2,4]
+    )
+}
+
+# calculate Boyce Index
+calc_boyce <- function(pred_all, pred_presence) {
+    require(ecospat)
+    
+    return(
+        ecospat::ecospat.boyce(fit = pred_all,
+                               obs = pred_presence,
+                               PEplot = FALSE)$cor
+    )
+}
+
 
 # filter coordinates based on cells
 # NOTE: this function will change the order of the rows

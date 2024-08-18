@@ -76,6 +76,8 @@ scv <- blockCV::cv_spatial(
 folds <- scv$folds_list
 
 AUCs <- c()
+PRCs <- c()
+Boyce <- c()
 models <- list()
 
 for(k in seq_len(length(folds))) {
@@ -91,6 +93,8 @@ for(k in seq_len(length(folds))) {
     
     preds <- predict(mod, model_data[test_set, -1], type = "response")
     AUCs[k] <- calc_auc(preds, model_data$occ[test_set])
+    PRCs[k] <- calc_prc(preds, model_data$occ[test_set])
+    Boyce[k] <- calc_boyce(preds, preds[which(model_data[test_set, ]$occ == 1)])
     models[[k]] <- mod
 }
 
