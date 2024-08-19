@@ -235,3 +235,18 @@ terra::panel(
     nr = 2
 )
 
+
+# Calculate the MESS map --------------------------------------------------
+mess_map <- predicts::mess(f2_rast, model_data[, -1])
+plot(mess_map)
+
+mess_map[mess_map >= 0] <- 1
+mess_map[mess_map < 0] <- 0
+plot(mess_map)
+
+terra::panel(
+    x = c(pred_current, pred_f1, pred_f2, mess_map), 
+    range = c(0, 1),
+    nr = 2
+)
+
