@@ -103,6 +103,14 @@ print(AUCs)
 print(mean(AUCs))
 print(sd(AUCs))
 
+print(PRCs)
+print(mean(PRCs))
+print(sd(PRCs))
+
+print(Boyce)
+print(mean(Boyce))
+print(sd(Boyce))
+
 # check the response curves of with CI of CV
 myspatial::ggResponse2(
     models = models, 
@@ -133,7 +141,7 @@ myspatial::ggResponse(
 
 #
 # predicting rasters ------------------------------------------------------
-terra::terraOptions(steps = 30)
+terra::terraOptions(steps = 10)
 
 # predict to raster layers
 tm <- Sys.time()
@@ -149,7 +157,7 @@ pred_current <- terra::predict(
         "glmnet"
     ),
     na.rm = TRUE,
-    filename = "outputs/cat/pred_current.tif",
+    # filename = "outputs/cat/pred_current.tif",
     wopt = list(names = "current"),
     overwrite = TRUE
 )

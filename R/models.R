@@ -248,7 +248,7 @@ predict.ensemble <- function(object, newdata, ...){
     
     # predict rf with ranger
     if (!is.null(object[["RF"]])) {
-        pred_rf <- predict(object[["RF"]], newdata, ...)$predictions[,"1"]
+        pred_rf <- predict(object[["RF"]], newdata, num.threads = 5, ...)$predictions[,"1"]
     }
     
     # predict brt with the best tree number
