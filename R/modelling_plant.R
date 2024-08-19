@@ -101,7 +101,8 @@ for(k in seq_len(length(folds))) {
 
 print(AUCs)
 print(mean(AUCs))
-print(sd(AUCs))
+print(mean(PRCs))
+print(mean(Boyce))
 
 # check the response curves of with CI of CV
 myspatial::ggResponse2(
