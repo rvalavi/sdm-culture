@@ -8,8 +8,7 @@ pkg <- c(
     "terra",
     "blockCV",
     "dismo",
-    "precrec",
-    "caret"
+    "precrec"
 )
 
 pkgna <- names(which(sapply(sapply(pkg, find.package, quiet = TRUE), length) == 0))
@@ -275,12 +274,11 @@ predict.ensemble <- function(object, newdata, ...){
 # function for simultaneous tuning of maxent regularization multiplier and features
 maxent_param <- function(data, y = "occ", folds = NULL, k = 5, filepath = tempdir()){
     require(dismo)
-    require(caret)
     require(precrec)
     
     if(is.null(folds)){
         # generate balanced CV folds
-        folds <- caret::createFolds(y = as.factor(data$occ), k = k)
+        folds <- dismo::kfold(data[, y, drop = TRUE], k = k)
     }
     covars <- names(data)[which(names(data) != y)]
     names(data)[which(names(data) == y)] <- "occ"
@@ -367,7 +365,7 @@ random_forest <- function(data,
                         stringsAsFactors = FALSE)
     
     if(is.null(foldid)){
-        foldid <- dismo::kfold(data, k = 5)
+        foldid <- dismo::kfold(data[, y, drop = TRUE], k = 5)
     }
     nfold <- sort(unique(foldid))
     

@@ -4,7 +4,7 @@ library(terra)
 the_rast <- terra::rast("data/CHELSA_data/PCA/1981-2010/pc1_plant.tif")
 
 r <- terra::resample(
-    x = terra::rast("data/Topo/MSTPI_pl.tif"),
+    x = terra::rast("data/Topo/MSTPI_pl_base.tif"),
     y = the_rast,
     method = "near",
     filename = "data/Topo/MSTPI_plant.tif",
