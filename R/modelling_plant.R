@@ -104,7 +104,7 @@ print(mean(AUCs))
 print(mean(PRCs))
 print(mean(Boyce))
 
-# check the response curves of with CI of CV
+# check the response curves with CI of CV
 myspatial::ggResponse2(
     models = models, 
     covariates = model_data[, -1], 
@@ -113,7 +113,7 @@ myspatial::ggResponse2(
 
 
 # final model fitting -----------------------------------------------------
-# fitting the with model tuning
+# fitting the final model with random-cv model tuning
 tm <- Sys.time()
 model <- ensemble(
     x = model_data,
