@@ -24,6 +24,6 @@ Order of running scripts:
 ### References
 
 The ensemble model is from:
-* Valavi, R., Guillera‐Arroita, G, Lahoz‐Monfort, J.J. & Elith, J. (2021) Predictive performance of presence-only species distribution models: a benchmark study with reproducible code. Ecological Monographs. [DOI:10.1002/ecm.1486](DOI:10.1002/ecm.1486)
+* Valavi, R., Guillera‐Arroita, G, Lahoz‐Monfort, J.J. & Elith, J. (2021) Predictive performance of presence-only species distribution models: a benchmark study with reproducible code. *Ecological Monographs*. [DOI:10.1002/ecm.1486](DOI:10.1002/ecm.1486)
 
 * 
