@@ -3,3 +3,6 @@
 */*.tif
 *.rds
 */*.rds
+# do not ignore these two files
+!data/Topo/MSTPI_cat.tif
+!data/Topo/MSTPI_plant.tif
